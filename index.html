@@ -826,8 +826,9 @@ input[type=range].hero-slider::-webkit-slider-thumb {
       <div class="sub-card" id="summary-block"><h3>LOADING…</h3></div>
       <div class="submit-row">
         <button class="btn-export" onclick="exportFile()">⬇ EXPORT RECORD</button>
-        <button class="btn-final" onclick="submitFile()">✓ SUBMIT LEADERSHIP RECORD</button>
+        <button class="btn-final" id="btn-submit" onclick="submitFile()">✓ SUBMIT LEADERSHIP RECORD</button>
       </div>
+      <div id="submit-lock" style="display:none;margin-top:16px;border:1px solid var(--border2);border-left:4px solid #b8860b;border-radius:6px;padding:12px 14px;background:var(--bg2);font-size:13px;line-height:1.55;color:var(--ink2);"></div>
     </div>
 
     <!-- SUCCESS -->
@@ -891,7 +892,7 @@ function goPhase(key) {
   const nav   = document.getElementById('nav-' + k);
   if (panel) panel.classList.add('active');
   if (nav)   nav.classList.add('active');
-  if (k === '3') buildSummary();
+  if (k === '3') { buildSummary(); updateSubmitLock(); }
   saveState.phase = k; saveNow();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -1003,7 +1004,37 @@ function exportFile() {
 }
 
 // ── SUBMIT ──
+// ── SUBMIT LOCK ── Submit opens only after the Team phase is complete.
+const TEAM_FIELDS = [
+  ['team-listening', 'Listening Notes'],
+  ['t-values',  'Synthesis 01 · Shared Values'],
+  ['t-hero',    'Synthesis 02 · HERO Patterns'],
+  ['t-esteem',  'Synthesis 03 · Durable Esteem'],
+  ['t-global',  'Synthesis 04 · Global Transfer'],
+  ['t-avolio',  "Team Capstone · Avolio's Dual Framing"],
+];
+function missingTeam() {
+  return TEAM_FIELDS.filter(([id]) => !((document.getElementById(id) || {}).value || '').trim()).map(([, label]) => label);
+}
+function updateSubmitLock() {
+  const btn = document.getElementById('btn-submit'), box = document.getElementById('submit-lock');
+  if (!btn || !box) return;
+  const miss = missingTeam();
+  btn.disabled = miss.length > 0;
+  btn.style.opacity = miss.length ? '.45' : '';
+  btn.style.cursor  = miss.length ? 'not-allowed' : '';
+  if (miss.length) {
+    box.innerHTML = '<strong>🔒 Submit unlocks after the Team Share.</strong> Your work is saved automatically — you can close this tab and come back. ' +
+      'Complete these Team sections first:<br>• ' + miss.join('<br>• ') +
+      '<br><a href="#" onclick="goPhase(2);return false;" style="color:var(--forest);font-weight:600;">← Go to the Team phase</a>';
+    box.style.display = 'block';
+  } else {
+    box.style.display = 'none';
+  }
+}
+
 function submitFile() {
+  if (missingTeam().length) { updateSubmitLock(); return; }
   buildSummary();
   exportFile();
   const code = studentName.replace(/\s+/g,'').toUpperCase().slice(0,4) + '-' + Date.now().toString(36).toUpperCase().slice(-6);
